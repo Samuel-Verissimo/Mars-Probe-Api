@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mars Probe API</title>
+  <link rel="icon" type="image/jpeg" href="/static/favicon.jpg" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid #21262d;
+      padding-bottom: 1.25rem;
+    }
+
+    header h1 { font-size: 1.4rem; font-weight: 700; }
+    header p { color: #8b949e; font-size: 0.85rem; margin-top: 0.15rem; }
+
+    .links { margin-left: auto; display: flex; gap: 0.5rem; }
+    .links a {
+      color: #58a6ff;
+      text-decoration: none;
+      font-size: 0.8rem;
+      border: 1px solid #30363d;
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+    }
+    .links a:hover { background: #21262d; }
+
+    .cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #8b949e;
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .dim { color: #484f58; font-weight: 400; }
+
+    .badge {
+      background: #388bfd26;
+      color: #58a6ff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.1rem 0.4rem;
+      border-radius: 10px;
+    }
+
+    .grid-wrapper { overflow-x: auto; }
+
+    table.grid {
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      font-family: monospace;
+    }
+
+    table.grid td {
+      width: 2.6rem;
+      height: 2.6rem;
+      text-align: center;
+      color: #484f58;
+      border: 1px solid #21262d;
+    }
+
+    table.grid td.axis {
+      color: #8b949e;
+      font-size: 0.7rem;
+      border: none;
+      padding: 0 0.35rem;
+    }
+
+    table.grid td.probe {
+      background: #388bfd26;
+      color: #58a6ff;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border-color: #388bfd55;
+    }
+
+    table.probe-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    table.probe-table th {
+      text-align: left;
+      color: #8b949e;
+      font-weight: 500;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.4rem 0.6rem;
+      border-bottom: 1px solid #21262d;
+    }
+
+    table.probe-table td {
+      padding: 0.5rem 0.6rem;
+      border-bottom: 1px solid #161b22;
+    }
+
+    table.probe-table td.pos { font-family: monospace; }
+    table.probe-table td.dir { color: #58a6ff; }
+    table.probe-table code { font-size: 0.72rem; color: #484f58; }
+
+    .empty-state {
+      color: #8b949e;
+      font-size: 0.9rem;
+      padding: 2rem;
+      text-align: center;
+      border: 1px dashed #21262d;
+      border-radius: 10px;
+    }
+
+    .empty-state code { color: #58a6ff; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>🛸 Mars Probe API</h1>
+      <p>Real-time probe positions on the Martian plateau</p>
+    </div>
+    <div class="links">
+      <a href="/docs">Swagger</a>
+      <a href="/redoc">ReDoc</a>
+    </div>
+  </header>
+
+  {% if plateau %}
+  <div class="cols">
+    <div>
+      <h2>Plateau <span class="dim">{{ plateau.x }} × {{ plateau.y }}</span></h2>
+      <div class="grid-wrapper">
+        <table class="grid">
+          {% for y in range(plateau.y, -1, -1) %}
+          <tr>
+            <td class="axis">{{ y }}</td>
+            {% for x in range(plateau.x + 1) %}
+              {% set key = x ~ "," ~ y %}
+              {% if key in probe_map %}
+                <td class="probe">{{ probe_map[key] }}</td>
+              {% else %}
+                <td>·</td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+          {% endfor %}
+          <tr>
+            <td></td>
+            {% for x in range(plateau.x + 1) %}
+              <td class="axis">{{ x }}</td>
+            {% endfor %}
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <h2>Probes <span class="badge">{{ probes | length }}</span></h2>
+      {% if probes %}
+      <table class="probe-table">
+        <thead>
+          <tr><th>Pos</th><th>Dir</th><th>ID</th></tr>
+        </thead>
+        <tbody>
+          {% for probe in probes %}
+          <tr>
+            <td class="pos">({{ probe.x }}, {{ probe.y }})</td>
+            <td class="dir">{{ probe.direction.value }} {{ arrows[probe.direction.value] }}</td>
+            <td><code>{{ probe.id[:8] }}…</code></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:#484f58;font-size:0.8rem">No probes deployed yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% else %}
+  <p class="empty-state">
+    No plateau configured yet. Use <code>POST /probes</code> to launch the first probe.
+  </p>
+  {% endif %}
+</body>
+</html>
