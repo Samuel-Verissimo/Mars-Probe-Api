@@ -1,6 +1,11 @@
 import pytest
 
-from app.exceptions.probe_exceptions import ProbeNotFoundError, ProbeOutOfBoundsError
+from app.exceptions.probe_exceptions import (
+    InvalidCommandError,
+    PlateauShrinkError,
+    ProbeNotFoundError,
+    ProbeOutOfBoundsError,
+)
 from app.models.enums import Direction
 from app.repositories.plateau_repository import PlateauRepository
 from app.repositories.probe_repository import ProbeRepository
@@ -33,6 +38,24 @@ class TestLaunch:
 
     def test_generates_unique_ids(self, service: ProbeService) -> None:
         assert service.launch(5, 5, Direction.NORTH).id != service.launch(5, 5, Direction.NORTH).id
+
+    def test_shrink_plateau_below_existing_probe_raises_error(self, service: ProbeService) -> None:
+        probe = service.launch(10, 10, Direction.NORTH)
+        service.move(probe.id, "MMMMM")
+        with pytest.raises(PlateauShrinkError):
+            service.launch(3, 3, Direction.NORTH)
+
+    def test_expand_plateau_with_existing_probes_is_allowed(self, service: ProbeService) -> None:
+        probe = service.launch(5, 5, Direction.NORTH)
+        service.move(probe.id, "MM")
+        new_probe = service.launch(10, 10, Direction.EAST)
+        assert service.get_plateau().x == 10
+        assert new_probe.x == 0
+
+    def test_same_size_plateau_with_existing_probes_is_allowed(self, service: ProbeService) -> None:
+        service.launch(5, 5, Direction.NORTH)
+        service.launch(5, 5, Direction.EAST)
+        assert service.get_plateau().x == 5
 
 
 class TestMove:
@@ -98,6 +121,22 @@ class TestMove:
         with pytest.raises(ProbeOutOfBoundsError):
             service.move(probe.id, "MMMM")
         assert service.get_by_id(probe.id).y == 0
+
+    def test_invalid_command_chars_raise_error(self, service: ProbeService) -> None:
+        probe = service.launch(5, 5, Direction.NORTH)
+        with pytest.raises(InvalidCommandError):
+            service.move(probe.id, "MXZ")
+
+    def test_invalid_commands_do_not_partially_apply(self, service: ProbeService) -> None:
+        probe = service.launch(5, 5, Direction.NORTH)
+        with pytest.raises(InvalidCommandError):
+            service.move(probe.id, "MMX")
+        assert service.get_by_id(probe.id).y == 0
+
+    def test_lowercase_commands_are_accepted(self, service: ProbeService) -> None:
+        probe = service.launch(5, 5, Direction.NORTH)
+        result = service.move(probe.id, "mm")
+        assert result.y == 2
 
 
 class TestGetPlateau:

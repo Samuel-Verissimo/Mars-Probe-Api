@@ -34,6 +34,15 @@ class TestLaunchProbe:
         response = client.post("/probes", json={"direction": "NORTH"})
         assert response.status_code == 422
 
+    def test_shrink_plateau_below_existing_probe_returns_409(self, client: TestClient) -> None:
+        launch = client.post("/probes", json={"x": 10, "y": 10, "direction": "NORTH"})
+        probe_id = launch.json()["id"]
+        client.post(f"/probes/{probe_id}/commands", json={"commands": "MMMMM"})
+
+        response = client.post("/probes", json={"x": 3, "y": 3, "direction": "EAST"})
+        assert response.status_code == 409
+        assert "out of bounds" in response.json()["detail"]
+
 
 class TestSendCommands:
     def test_moves_probe_forward(self, client: TestClient) -> None:
