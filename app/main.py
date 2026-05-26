@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -36,6 +37,12 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 app.include_router(visual_router)
 app.include_router(probe_router)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+    messages = [err.get("msg", "Invalid input") for err in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": "; ".join(messages)})
 
 
 @app.exception_handler(ProbeNotFoundError)
