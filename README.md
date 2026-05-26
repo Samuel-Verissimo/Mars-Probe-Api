@@ -2,138 +2,127 @@
 
 API REST para controle de sondas exploradoras em um planalto retangular em Marte.
 
-## Contexto
+![Tela inicial](app/static/preview.png)
 
-Uma sonda é lançada em um planalto 2D compartilhado. O ponto de pouso é sempre a origem `(0, 0)`. Os limites do planalto são definidos no momento do primeiro lançamento pelas coordenadas superiores direitas `(x, y)`. A sonda recebe comandos de movimento e rotação e nunca pode ultrapassar os limites da malha.
-
-## Stack
-
-- **Python 3.12**
-- **FastAPI** — framework HTTP
-- **Pydantic v2** — validação e schemas
-- **Jinja2** — template do mapa visual
-- **Pytest** — testes unitários e de integração
-- **Docker / Docker Compose**
-
-## Estrutura do projeto
-
-```
-app/
-├── controllers/     # Camada HTTP — rotas FastAPI
-├── services/        # Regras de negócio
-├── repositories/    # Persistência em memória
-├── models/          # Entidades de domínio e enums
-├── schemas/         # DTOs Pydantic (request / response)
-├── exceptions/      # Exceções de domínio
-├── templates/       # Template HTML do mapa visual
-└── core/            # Config, DI e seeder
-tests/
-├── unit/            # Testes de service e repository
-└── integration/     # Testes dos endpoints via TestClient
-```
-
-## Executando localmente
+## Como rodar
 
 **Pré-requisitos:** Python 3.12+ e `pip`.
 
 ```bash
-# 1. Crie e ative um ambiente virtual
 python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# 2. Instale as dependências
-pip install -r requirements.txt
-
-# 3. Suba o servidor
+source .venv/bin/activate       # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
 uvicorn app.main:app --reload
 ```
 
-A API ficará disponível em `http://localhost:8000`.
+Acesse `http://localhost:8000`.
 
-## Executando com Docker
+**Com Docker:**
 
 ```bash
-# Build + start
 docker compose up --build
-
-# Apenas start (após o primeiro build)
-docker compose up
 ```
 
-## Documentação interativa
+## Endpoints
 
-| Interface | URL |
-|-----------|-----|
-| Mapa visual | `http://localhost:8000/` |
-| Swagger UI | `http://localhost:8000/docs` |
-| ReDoc | `http://localhost:8000/redoc` |
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `POST` | `/probes` | Lança uma sonda e configura o planalto |
+| `POST` | `/probes/{id}/commands` | Envia comandos de movimento |
+| `GET` | `/probes` | Lista todas as sondas |
+| `GET` | `/probes/{id}` | Posição de uma sonda específica |
+| `DELETE` | `/probes/{id}` | Remove uma sonda |
+| `GET` | `/health` | Health check |
 
-## Rodando os testes
+### Lançar sonda
+
+```json
+POST /probes
+{ "x": 5, "y": 5, "direction": "NORTH" }
+
+// 201
+{ "id": "uuid", "x": 0, "y": 0, "direction": "NORTH" }
+```
+
+`x` e `y` são as coordenadas do canto superior direito do planalto. A sonda sempre pousa em `(0, 0)`.
+
+### Enviar comandos
+
+```json
+POST /probes/{id}/commands
+{ "commands": "MMRMM" }
+
+// 200
+{ "id": "uuid", "x": 2, "y": 2, "direction": "EAST" }
+```
+
+| Comando | Ação |
+|---------|------|
+| `M` | Avança uma posição |
+| `L` | Gira 90° à esquerda |
+| `R` | Gira 90° à direita |
+
+## Regras de negócio
+
+- Sondas iniciam sempre em `(0, 0)`
+- O planalto é compartilhado entre todas as sondas
+- Comandos inválidos são rejeitados antes de qualquer execução
+- Movimentos fora dos limites retornam `422`
+- Sondas não encontradas retornam `404`
+
+## Testes
 
 ```bash
 pytest
 ```
 
-Para relatório de cobertura:
+Cobertura: 98%. Para relatório HTML:
 
 ```bash
 pytest --cov=app --cov-report=html
 ```
 
-## Endpoints
+## Decisões de design
 
-### `POST /probes`
+**O plateau pode ser redimensionado, mas nunca de forma que coloque uma sonda fora dos limites.**
+Cada lançamento pode redefinir as dimensões. Aumentar é sempre ok. Diminuir só falha se alguma sonda já estiver além do novo limite, e a API retorna `409`. Congelar no primeiro lançamento seria mais simples, mas impediria qualquer expansão futura.
 
-Lança uma sonda e configura o planalto compartilhado. A sonda sempre inicia em `(0, 0)`.
+**A sequência de comandos é validada antes de qualquer movimento.**
+Se há um caractere inválido, nada é executado. O mesmo vale para colisões com o limite: ou todos os movimentos funcionam, ou nenhum é aplicado. Essa lógica vive na service, não só na camada HTTP, então se comporta da mesma forma em testes ou em qualquer outro contexto.
 
-> `x` e `y` definem as coordenadas superiores direitas do planalto (ex: `5, 5` cria uma malha de 6×6).
+**O estado fica em memória e é perdido ao reiniciar.**
+Limitação consciente para esse contexto. O padrão de repositório garante que, se precisar de banco de dados, só o repositório muda, sem tocar na lógica de negócio.
 
-```json
-// Request
-{ "x": 5, "y": 5, "direction": "NORTH" }
+### Status HTTP
 
-// Response 201
-{ "id": "uuid", "x": 0, "y": 0, "direction": "NORTH" }
+| Situação | Código |
+|----------|--------|
+| Probe criada | `201 Created` |
+| Operação bem-sucedida | `200 OK` |
+| Probe removida | `204 No Content` |
+| Plateau encolheria e invalidaria sondas existentes | `409 Conflict` |
+| Entrada inválida / comando ilegal / movimento fora dos limites | `422 Unprocessable Entity` |
+| Probe não encontrada | `404 Not Found` |
+
+## Stack
+
+- **Python 3.12** / **FastAPI** / **Pydantic v2**
+- **Pytest** com 98% de cobertura
+- **Docker / Docker Compose**
+- **Jinja2** para o mapa visual
+
+## Estrutura
+
 ```
-
-### `POST /probes/{id}/commands`
-
-Envia uma sequência de comandos para a sonda. Sequências com caracteres inválidos são rejeitadas integralmente antes de qualquer execução.
-
-| Comando | Ação |
-|---------|------|
-| `M` | Avança uma posição na direção atual |
-| `L` | Gira 90° à esquerda |
-| `R` | Gira 90° à direita |
-
-```json
-// Request
-{ "commands": "MMRMM" }
-
-// Response 200
-{ "id": "uuid", "x": 2, "y": 2, "direction": "EAST" }
+app/
+├── controllers/   rotas FastAPI
+├── services/      regras de negócio
+├── repositories/  persistência em memória
+├── models/        entidades e enums
+├── schemas/       DTOs Pydantic
+├── exceptions/    exceções de domínio
+└── core/          config, DI e seeder
+tests/
+├── unit/          service e repository
+└── integration/   endpoints via TestClient
 ```
-
-### `GET /probes`
-
-Retorna todas as sondas e suas posições atuais.
-
-### `GET /probes/{id}`
-
-Retorna a posição atual de uma sonda específica.
-
-### `DELETE /probes/{id}`
-
-Remove uma sonda. Retorna `204 No Content`.
-
-### `GET /health`
-
-Health check da aplicação.
-
-## Regras de negócio
-
-- Sondas iniciam sempre em `(0, 0)`
-- O planalto é compartilhado entre todas as sondas e configurado no lançamento
-- Comandos inválidos (`X`, `Z`, etc.) são rejeitados **antes** de qualquer execução — `422`
-- Movimentos fora dos limites do planalto retornam `422`
-- Sondas não encontradas retornam `404`
