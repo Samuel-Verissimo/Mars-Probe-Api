@@ -120,7 +120,22 @@
 
     table.probe-table td.pos { font-family: monospace; }
     table.probe-table td.dir { color: #58a6ff; }
-    table.probe-table code { font-size: 0.72rem; color: #484f58; }
+
+    .id-cell { display: flex; align-items: center; gap: 0.35rem; }
+    .id-cell code { font-size: 0.68rem; color: #484f58; font-family: monospace; }
+
+    .copy-btn {
+      background: none;
+      border: none;
+      color: #484f58;
+      cursor: pointer;
+      padding: 0.15rem 0.25rem;
+      border-radius: 4px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover { color: #58a6ff; background: #21262d; }
+    .copy-btn.copied { color: #3fb950; }
 
     .empty-state {
       color: #8b949e;
@@ -187,7 +202,16 @@
           <tr>
             <td class="pos">({{ probe.x }}, {{ probe.y }})</td>
             <td class="dir">{{ probe.direction.value }} {{ arrows[probe.direction.value] }}</td>
-            <td><code>{{ probe.id[:8] }}…</code></td>
+            <td>
+              <div class="id-cell">
+                <code>{{ probe.id }}</code>
+                <button class="copy-btn" title="Copy ID" onclick="copyId(this, '{{ probe.id }}')">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -203,5 +227,13 @@
     No plateau configured yet. Use <code>POST /probes</code> to launch the first probe.
   </p>
   {% endif %}
+  <script>
+    function copyId(btn, id) {
+      navigator.clipboard.writeText(id).then(() => {
+        btn.classList.add('copied');
+        setTimeout(() => btn.classList.remove('copied'), 1500);
+      });
+    }
+  </script>
 </body>
 </html>
