@@ -62,6 +62,10 @@ POST /probes/{id}/commands
 | `L` | Gira 90° à esquerda |
 | `R` | Gira 90° à direita |
 
+## Testando manualmente
+
+A API sobe com 7 sondas pré-carregadas num plateau `5 × 5`. Para lançar uma nova sem conflito, use `x` e `y` iguais ou maiores que `4`. Para testar o bloqueio de resize, use valores menores.
+
 ## Regras de negócio
 
 - Sondas iniciam sempre em `(0, 0)`
