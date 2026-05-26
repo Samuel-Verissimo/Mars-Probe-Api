@@ -6,7 +6,6 @@ class Settings(BaseSettings):
 
     app_name: str = "Mars Probe API"
     app_version: str = "1.0.0"
-    debug: bool = False
 
 
 settings = Settings()

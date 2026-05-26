@@ -1,5 +1,3 @@
-from typing import Optional
-
 from app.models.probe import Probe
 
 
@@ -11,7 +9,7 @@ class ProbeRepository:
         self._storage[probe.id] = probe
         return probe
 
-    def find_by_id(self, probe_id: str) -> Optional[Probe]:
+    def find_by_id(self, probe_id: str) -> Probe | None:
         return self._storage.get(probe_id)
 
     def find_all(self) -> list[Probe]:
