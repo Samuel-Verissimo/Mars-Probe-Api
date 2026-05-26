@@ -1,0 +1,11 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --cov=app --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/__init__.py", "*/migrations/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
