@@ -46,6 +46,19 @@ POST /probes
 
 `x` e `y` são as coordenadas do canto superior direito do planalto. A sonda sempre pousa em `(0, 0)`.
 
+### Listar sondas
+
+```json
+GET /probes
+
+// 200
+{
+  "probes": [
+    { "id": "uuid", "x": 1, "y": 1, "direction": "EAST" }
+  ]
+}
+```
+
 ### Enviar comandos
 
 ```json

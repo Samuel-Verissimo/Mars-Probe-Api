@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 
 from app.core.dependencies import get_probe_service
 from app.models.probe import Probe
-from app.schemas.probe_schemas import LaunchProbeRequest, ProbeResponse, SendCommandsRequest
+from app.schemas.probe_schemas import LaunchProbeRequest, ProbeListResponse, ProbeResponse, SendCommandsRequest
 from app.services.probe_service import ProbeService
 
 router = APIRouter(prefix="/probes", tags=["Probes"])
@@ -42,11 +42,11 @@ def send_commands(
 
 @router.get(
     "",
-    response_model=list[ProbeResponse],
+    response_model=ProbeListResponse,
     summary="List all probes and their current positions",
 )
-def list_probes(service: ProbeService = Depends(get_probe_service)) -> list[ProbeResponse]:
-    return [_to_response(p) for p in service.get_all()]
+def list_probes(service: ProbeService = Depends(get_probe_service)) -> ProbeListResponse:
+    return ProbeListResponse(probes=[_to_response(p) for p in service.get_all()])
 
 
 @router.get(

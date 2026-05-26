@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from app.models.enums import Direction
 
@@ -12,18 +12,13 @@ class LaunchProbeRequest(BaseModel):
 class SendCommandsRequest(BaseModel):
     commands: str = Field(..., min_length=1, description="Sequence of M, L, R commands")
 
-    @field_validator("commands")
-    @classmethod
-    def validate_commands(cls, v: str) -> str:
-        normalized = v.upper()
-        invalid = set(normalized) - {"M", "L", "R"}
-        if invalid:
-            raise ValueError(f"Invalid commands: {sorted(invalid)}. Only M, L, R are allowed.")
-        return normalized
-
 
 class ProbeResponse(BaseModel):
     id: str
     x: int
     y: int
     direction: Direction
+
+
+class ProbeListResponse(BaseModel):
+    probes: list[ProbeResponse]

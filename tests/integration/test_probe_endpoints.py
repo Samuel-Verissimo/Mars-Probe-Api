@@ -104,19 +104,19 @@ class TestListProbes:
 
         response = client.get("/probes")
         assert response.status_code == 200
-        assert len(response.json()) == 2
+        assert len(response.json()["probes"]) == 2
 
     def test_returns_empty_list_when_no_probes(self, client: TestClient) -> None:
         response = client.get("/probes")
         assert response.status_code == 200
-        assert response.json() == []
+        assert response.json() == {"probes": []}
 
     def test_response_includes_updated_positions(self, client: TestClient) -> None:
         launch = client.post("/probes", json={"x": 5, "y": 5, "direction": "NORTH"})
         probe_id = launch.json()["id"]
         client.post(f"/probes/{probe_id}/commands", json={"commands": "MMM"})
 
-        probes = client.get("/probes").json()
+        probes = client.get("/probes").json()["probes"]
         probe = next(p for p in probes if p["id"] == probe_id)
         assert probe["y"] == 3
 
@@ -157,7 +157,7 @@ class TestDeleteProbe:
         probe_id = launch.json()["id"]
 
         client.delete(f"/probes/{probe_id}")
-        ids = [p["id"] for p in client.get("/probes").json()]
+        ids = [p["id"] for p in client.get("/probes").json()["probes"]]
         assert probe_id not in ids
 
     def test_nonexistent_probe_returns_404(self, client: TestClient) -> None:
