@@ -10,3 +10,16 @@ class ProbeOutOfBoundsError(Exception):
             f"Move would place probe at ({x}, {y}), "
             f"which is outside plateau bounds (0-{plateau_x}, 0-{plateau_y})"
         )
+
+
+class InvalidCommandError(Exception):
+    def __init__(self, invalid_chars: list[str]) -> None:
+        super().__init__(f"Invalid commands: {invalid_chars}. Only M, L, R are allowed.")
+
+
+class PlateauShrinkError(Exception):
+    def __init__(self, new_x: int, new_y: int, probe_ids: list[str]) -> None:
+        super().__init__(
+            f"Cannot resize plateau to ({new_x}, {new_y}): "
+            f"probes {probe_ids} would be placed out of bounds."
+        )

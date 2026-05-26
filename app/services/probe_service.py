@@ -1,6 +1,11 @@
 import uuid
 
-from app.exceptions.probe_exceptions import ProbeNotFoundError, ProbeOutOfBoundsError
+from app.exceptions.probe_exceptions import (
+    InvalidCommandError,
+    PlateauShrinkError,
+    ProbeNotFoundError,
+    ProbeOutOfBoundsError,
+)
 from app.models.enums import Command, Direction
 from app.models.probe import Plateau, Probe
 from app.repositories.plateau_repository import PlateauRepository
@@ -34,11 +39,19 @@ class ProbeService:
         self._plateau = plateau_repository
 
     def launch(self, plateau_x: int, plateau_y: int, direction: Direction) -> Probe:
+        self._validate_plateau_resize(plateau_x, plateau_y)
         self._plateau.set(Plateau(x=plateau_x, y=plateau_y))
         probe = Probe(id=str(uuid.uuid4()), x=0, y=0, direction=direction)
         return self._probes.save(probe)
 
     def move(self, probe_id: str, commands: str) -> Probe:
+        # Normalize and validate before touching any state — the service must be
+        # safe to call directly, not just through the HTTP layer.
+        commands = commands.upper()
+        invalid = set(commands) - {"M", "L", "R"}
+        if invalid:
+            raise InvalidCommandError(sorted(invalid))
+
         probe = self._require_probe(probe_id)
         plateau = self._plateau.get()
         if plateau is None:
@@ -82,3 +95,14 @@ class ProbeService:
         if probe is None:
             raise ProbeNotFoundError(probe_id)
         return probe
+
+    def _validate_plateau_resize(self, new_x: int, new_y: int) -> None:
+        # A plateau resize is allowed, but cannot invalidate probes already deployed.
+        # Shrinking below any active probe position would leave the system in an
+        # inconsistent state — probes physically outside the declared grid.
+        out_of_bounds = [
+            p.id for p in self._probes.find_all()
+            if p.x > new_x or p.y > new_y
+        ]
+        if out_of_bounds:
+            raise PlateauShrinkError(new_x, new_y, out_of_bounds)

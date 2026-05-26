@@ -10,7 +10,12 @@ from app.controllers.visual_controller import router as visual_router
 from app.core.config import settings
 from app.core.dependencies import get_probe_service
 from app.core.seeder import seed
-from app.exceptions.probe_exceptions import ProbeNotFoundError, ProbeOutOfBoundsError
+from app.exceptions.probe_exceptions import (
+    InvalidCommandError,
+    PlateauShrinkError,
+    ProbeNotFoundError,
+    ProbeOutOfBoundsError,
+)
 
 
 @asynccontextmanager
@@ -41,6 +46,16 @@ async def probe_not_found_handler(_: Request, exc: ProbeNotFoundError) -> JSONRe
 @app.exception_handler(ProbeOutOfBoundsError)
 async def probe_out_of_bounds_handler(_: Request, exc: ProbeOutOfBoundsError) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidCommandError)
+async def invalid_command_handler(_: Request, exc: InvalidCommandError) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(PlateauShrinkError)
+async def plateau_shrink_handler(_: Request, exc: PlateauShrinkError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.get("/health", tags=["Health"], summary="Health check")
